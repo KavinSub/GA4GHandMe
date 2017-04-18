@@ -2,12 +2,12 @@ import getpass
 import requests
 import flask
 import json
-from flask import request
-from flask import session
+from flask import request, session, jsonify
 import os
 from optparse import OptionParser
 from requests_oauthlib import OAuth2Session
 import keys
+import compute
 from ga4gh.schemas import protocol as p
 import ga4gh.schemas.ga4gh.variants_pb2 as v
 
@@ -165,13 +165,14 @@ def translate(ga4gh_request):
 		# had to switch from p.Variant to something else due to json serialization errors. this took hours of head banging :(
 
 		response = {"reference_name":session["chrome"].encode('ascii'), "alternate_bases":[ttam_response[i+1]["allele"].encode('ascii')], "reference_bases":ttam_response[i]["allele"].encode('ascii'), "start":ttam_response[i]["start"], "end":ttam_response[i]["end"], "variant_set_id":"1"}
-
 		proto_response = p.fromJson(json.dumps(response), v.Variant)
 		ga4gh_response["data"].append(response)
 	
 	if profile_variant_response.status_code == 200:
 		# ga4gh_response is ths JSON we want, push it to results.html so the user can see their data
-		return flask.render_template("results.html", ga4gh_response=ga4gh_response)
+		# return flask.render_template("results.html", ga4gh_response=ga4gh_response)
+		compute.nearest_relative(ga4gh_response["data"])
+		return jsonify(ga4gh_response)
 
 	else:
 		profile_variant_response.raise_for_status()
@@ -181,4 +182,4 @@ app.secret_key = keys.sessions_key
 
 if __name__ == "__main__":
 	print "A local client for GA4GHandMe is now initialized."
-	app.run(debug=False, port=PORT)
+	app.run(debug=True, port=PORT)
